@@ -1,9 +1,10 @@
 import audio_model
 import video_model
+import attention_model
 
 
 folderPath = 'Single_Actor_01'
-imageSize = (224, 224) #set for safety only!
+imageSize = (256, 256) #set for safety only!
 
 
 audioProcessor = audio_model.audio_preprocesser(folderPath)
@@ -18,10 +19,10 @@ data = []
 for v,a,l in zip(videoData, audioData, labels):
     data.append((v,a,l))
 
-# print(len(data))
-# print("Data 1")
-# print(data[0][0].shape)
-# print(data[0][1].shape)
-# print(data[0][2])
+arch = attention_model.Architecture(6,512,2048,64,8,8)
+output = arch(data)
+print(output)
+
+
 
 
