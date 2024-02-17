@@ -1,5 +1,6 @@
 from moviepy.editor import VideoFileClip
 import os
+import sys
 
 import librosa
 import librosa.display
@@ -16,7 +17,7 @@ import shutil
 import torchvision.transforms as transforms
 from PIL import Image
 
-
+from tqdm import tqdm
 
 def conv3x3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1) -> nn.Conv2d:
     """3x3 convolution with padding"""
@@ -248,8 +249,13 @@ class audio_preprocesser:
         video_clip = VideoFileClip(input_video_path)
         audio_clip = video_clip.audio
 
+        original_stdout = sys.stdout
+        sys.stdout = open(os.devnull, 'w')
+    
         audio_clip.write_audiofile(output_audio_path, codec='pcm_s16le', fps=audio_clip.fps)
 
+        sys.stdout = original_stdout
+    
         video_clip.close()
     
         
@@ -258,7 +264,7 @@ class audio_preprocesser:
         os.makedirs(self.audio_folder, exist_ok=True)
 
         # Process each video file in the input folder
-        for video_file in os.listdir(self.video_folder):
+        for video_file in tqdm(os.listdir(self.video_folder), desc="Audio Extraction", ncols=100):
             if video_file.endswith('.mp4'):
                 input_video_path = os.path.join(self.video_folder, video_file)
                 output_audio_path = os.path.join(self.audio_folder, f'{os.path.splitext(video_file)[0]}.wav')
@@ -352,7 +358,7 @@ class audio_preprocesser:
         os.makedirs(self.spectograms, exist_ok=True)
 
         # Process each audio file in the input folder
-        for audio_file in os.listdir(self.audio_folder):
+        for audio_file in tqdm(os.listdir(self.audio_folder), desc="Audio Processing in Resnet18-2D", ncols=100):
             if audio_file.endswith('.wav'):
                 audio_file_path = os.path.join(self.audio_folder, audio_file)
                 spectrogram_parts = audio_preprocesser.generate_spectrogram(audio_file_path)

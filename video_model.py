@@ -4,8 +4,10 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
 from functools import partial
+from tqdm import tqdm
+
+
 
 def get_inplanes():
     return [64, 128, 256, 512]
@@ -179,6 +181,7 @@ class video_preprocessor():
         self.labels = []
         self.output = self.process()
         self.output = self.output.squeeze(3)
+        self.output = self.output.reshape(self.output.shape[0], self.output.shape[1], self.output.shape[2], -1)
     
     @staticmethod
     def processVideo(videoPath, imageSize, num_snippets = 6, frames_per_snippet = 16, augmentation = True):
@@ -251,19 +254,14 @@ class video_preprocessor():
         folderPath = self.video_folder
         imageSize = self.image_size
         tensorList = []
-        for filename in os.listdir(folderPath):
+        for filename in tqdm(os.listdir(folderPath), desc="Video Processing in Resnet101-3D", ncols=100):
             videoPath = os.path.join(folderPath, filename)
             label = filename.split('-')[2]
             self.labels.append(int(label))
             snippets = video_preprocessor.processVideo(videoPath, imageSize)
-            print('After processVideo')
             snippets = snippets.transpose(1, 2)
-            print(snippets.shape)
             output = video_preprocessor.evaluateResnet3D(ResNet101, snippets)
-            print(output.shape)
-            print('After ResNet eval')
             tensorList.append(output)
-            print('1')
         
         return torch.stack(tensorList)
 
