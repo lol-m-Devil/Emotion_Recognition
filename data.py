@@ -1,7 +1,6 @@
 import torch
 import os
 
-
 def load_data(folderPath):
     data = []
     files = os.listdir(folderPath)

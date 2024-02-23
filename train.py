@@ -1,53 +1,60 @@
-import data
 import os
+import shutil
 import random
 import attention_model
 import torch
 import configuration
+import torch.nn as nn
 
-
-def get_full_data(config):
-    data_preloaded = os.path.exists(config["tensor_data_path"]) and os.listdir(config["tensor_data_path"])
-    #datapreloaded = True if the tensor_data_path exists and is non-empty
-    if data_preloaded:
-        return data.load_data(config["tensor_data_path"])
-    else:
-        data = data.save_data(config["video_data_path"], config["image_size"], config["tensor_data_path"])
-        return data
-
-
-def split_data_uniformly(config):
-    data = get_full_data(config)
-    grouped_data = {}
-    for item in data:
-        label = item[-1]  
-        if label not in grouped_data:
-            grouped_data[label] = []
-        grouped_data[label].append(item)
-
-    for label_data in grouped_data.values():
-        random.shuffle(label_data)
-
-    train_data = []
-    validation_data = []
+def split_data(config):
+    data_dir = config["tensor_data_path"]
+    train_data_folder = config["training_data_folder"]
+    validation_data_folder = config["validation_data_folder"]
+    train_split = config["train_test_split"]
+    n_samples = len(os.listdir(data_dir)) // 3
     
-    train_counts = {label: int(len(label_data) * config["train_test_split"]) for label, label_data in grouped_data.items()}
+    os.makedirs(os.path.join(data_dir, train_data_folder), exist_ok=True)
+    os.makedirs(os.path.join(data_dir, validation_data_folder), exist_ok=True)
 
-    # Iterate over each group of data and distribute the samples into the two splits
-    for label, label_data in grouped_data.items():
-        train_data.extend(label_data[:train_counts[label]])
-        validation_data.extend(label_data[train_counts[label]:])
+    sample_indices = [i for i in range(n_samples)]
+    random.shuffle(sample_indices)
 
-    return train_data, validation_data
+    num_train_samples = int(train_split * n_samples)
     
+    train_indices = sample_indices[:num_train_samples]
+    val_indices = sample_indices[num_train_samples:]
+
+    # Move the data files to the appropriate directories
+    for i in train_indices:
+        shutil.move(os.path.join(data_dir, f'tensor_v_{i}.pt'), os.path.join(data_dir, train_data_folder))
+        shutil.move(os.path.join(data_dir, f'tensor_a_{i}.pt'), os.path.join(data_dir, train_data_folder))
+        shutil.move(os.path.join(data_dir, f'number_{i}.txt'), os.path.join(data_dir, train_data_folder))
+
+    for i in val_indices:
+        shutil.move(os.path.join(data_dir, f'tensor_v_{i}.pt'), os.path.join(data_dir, validation_data_folder))
+        shutil.move(os.path.join(data_dir, f'tensor_a_{i}.pt'), os.path.join(data_dir, validation_data_folder))
+        shutil.move(os.path.join(data_dir, f'number_{i}.txt'), os.path.join(data_dir, validation_data_folder))
+        
+
 def get_model(config):
     model = attention_model.Architecture(config["N"], config["a_m"], config["v_m"], config["s"], config["H"], config["out_classes"])
     return model
 
 def train_model(config):
-    trainData, validationData = split_data_uniformly(config)
+    
+    split_data(config)
+    
+    #load the data using data loader
+    #triplet loss
+    #training loop
+    #save the model weights and stuff
+    #run the validation after each epoch
+    #torch.device on cuda/cpu/gpu
+    #implement a writer!
+    
+    
     model = get_model(config)
-    optimizer = torch.optim.Adam(model.parameters(), lr = config['lr'], eps = 1e-9)
+    optimizer = torch.optim.Adam(model.parameters(), lr = config['lr'], eps = config['eps'])
 
     initial_epoch = 0
     global_step = 0
@@ -68,5 +75,6 @@ def train_model(config):
     else:
         print('No model to preload, starting from scratch')
 
+    loss_fn = nn.CrossEntropyLoss()
     
     
