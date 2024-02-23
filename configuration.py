@@ -16,8 +16,10 @@ def get_config():
         # "model_folder": "weights",
         # "model_basename": "tmodel_",
         "preload": "latest",
-        "video_data_path": "videoData", 
+        "input_data_path": "Single_Actor_01", 
         "tensor_data_path": "tensorData",
+        "resnet-18_path": "resnet18-f37072fd.pth",
+        "resnet-101_path": "resnet_101_kinetics.pth",
         "image_size": (256, 256),
     }
     

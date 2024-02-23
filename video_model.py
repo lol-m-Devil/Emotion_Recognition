@@ -174,14 +174,12 @@ class ResNet(nn.Module):
 
 
 class video_preprocessor():
-    def __init__(self, video_folder, imageSize) -> None:
-        self.model_path = 'resnet_101_kinetics.pth'
-        self.video_folder = video_folder
-        self.image_size = imageSize
-        self.labels = []
-        self.output = self.process()
-        self.output = self.output.squeeze(3)
-        self.output = self.output.reshape(self.output.shape[0], self.output.shape[1], self.output.shape[2], -1)
+    def __init__(self, config) -> None:
+        self.model_path = config["resnet-101_path"]
+        self.video_folder = config["input_data_path"]
+        self.image_size = config["image_size"]
+        self.output_folder = config["tensor_data_path"]
+        self.process()
     
     @staticmethod
     def processVideo(videoPath, imageSize, num_snippets = 6, frames_per_snippet = 16, augmentation = True):
@@ -253,17 +251,19 @@ class video_preprocessor():
 
         folderPath = self.video_folder
         imageSize = self.image_size
-        tensorList = []
+        i = 0
         for filename in tqdm(os.listdir(folderPath), desc="Video Processing in Resnet101-3D", ncols=100):
             videoPath = os.path.join(folderPath, filename)
             label = filename.split('-')[2]
-            self.labels.append(int(label))
             snippets = video_preprocessor.processVideo(videoPath, imageSize)
             snippets = snippets.transpose(1, 2)
             output = video_preprocessor.evaluateResnet3D(ResNet101, snippets)
-            tensorList.append(output)
-        
-        return torch.stack(tensorList)
+            output = output.squeeze(2)
+            output = output.reshape(output.shape[0], output.shape[1], -1)
+            torch.save(output, os.path.join(self.output_folder, f"tensor_v_{i}.pt"))
+            with open(os.path.join(self.output_folder, f"number_{i}.txt"), "w") as file:
+                file.write(str(int(label)))
+            i += 1
 
     
 

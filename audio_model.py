@@ -223,25 +223,22 @@ def _resnet(
     return model
 
 class audio_preprocesser:
-    def __init__(self, video_folder) -> None:
-        self.video_folder = video_folder
+    def __init__(self, config) -> None:
+        self.video_folder = config["input_data_path"]
         self.audio_folder = "Extracted_Audio"
         self.spectograms = "Extracted_Spectograms"
-        self.output_values = []
+        self.output_folder = config["tensor_data_path"]
         self.extract_audio_from_folder()
         
-        model_path = 'resnet18-f37072fd.pth'
+        model_path = config["resnet-18_path"]
         checkpoint = torch.load(model_path, map_location=torch.device('cpu'))
         self.Resnet18 = _resnet(BasicBlock, [2, 2, 2, 2])
         self.Resnet18.load_state_dict(checkpoint)
         self.pooling_layer = SpatialAveragePooling()
         self.save_normalized_spectrogram_images_from_folder()
-        self.output_values = torch.stack(self.output_values)
         if os.path.exists(self.audio_folder):
-            # Delete the folder and all its contents recursively
             shutil.rmtree(self.audio_folder)
         if os.path.exists(self.spectograms):
-            # Delete the folder and all its contents recursively
             shutil.rmtree(self.spectograms)
     
     @staticmethod
@@ -358,12 +355,16 @@ class audio_preprocesser:
         os.makedirs(self.spectograms, exist_ok=True)
 
         # Process each audio file in the input folder
+        i = 0
         for audio_file in tqdm(os.listdir(self.audio_folder), desc="Audio Processing in Resnet18-2D", ncols=100):
             if audio_file.endswith('.wav'):
                 audio_file_path = os.path.join(self.audio_folder, audio_file)
                 spectrogram_parts = audio_preprocesser.generate_spectrogram(audio_file_path)
                 normalized_parts = audio_preprocesser.normalize_sequences(spectrogram_parts)
-                self.output_values.append(self.save_normalized_spectrogram_images(audio_file_path, audio_file, normalized_parts))
+                os.makedirs(self.output_folder, exist_ok=True)
+                temp_tensor = self.save_normalized_spectrogram_images(audio_file_path, audio_file, normalized_parts)
+                torch.save(temp_tensor, os.path.join(self.output_folder, f"tensor_a_{i}.pt"))
+                i += 1
 
 
 
