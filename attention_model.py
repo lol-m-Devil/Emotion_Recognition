@@ -256,25 +256,25 @@ class Architecture(nn.Module):
         aData = self.Audio_temporal(aData)
         return aData
     
-    def forward(self, data): # data =  list of (vdata, adata, label)
-        vData = []
-        aData = []
-        for d in data:
-            v, a, _ = d
-            vData.append(v)
-            aData.append(a)
-        vData = torch.stack(vData)
-        aData = torch.stack(aData)    
-        vData = self.visual_task(vData)
-        aData = self.audio_task(aData)
+    def forward(self, v_data, a_data): # v_data: (batch, N, m, s)  #a_data: (batch, N, m')
+        # vData = []
+        # aData = []
+        # for d in data:
+        #     v, a, _ = d
+        #     vData.append(v)
+        #     aData.append(a)
+        # vData = torch.stack(vData)
+        # aData = torch.stack(aData)    
+        vData = self.visual_task(v_data)
+        aData = self.audio_task(a_data)
          
         output = self.cross(aData, vData)
         output = output.view(output.shape[0], -1) # batch x f
         
         output = self.fc(output) # batch x 8
         output = F.softmax(output, dim = -1)
-        output = torch.argmax(output, dim = -1) + 1
-        output = output.tolist()
+        # output = torch.argmax(output, dim = -1) + 1
+        # output = output.tolist()
         
         return output
          

@@ -5,6 +5,11 @@ import attention_model
 import torch
 import configuration
 import torch.nn as nn
+from torch.utils.data import DataLoader
+import dataset
+import audio_model
+import video_model
+from tqdm import tqdm
 
 def split_data(config):
     data_dir = config["tensor_data_path"]
@@ -85,6 +90,22 @@ def classify_in_folders(config):
         if filename.endswith(".txt"):
             file_path = os.path.join(validation_path, filename)
             os.remove(file_path)
+
+def get_ds(config):
+    folder_path = config["tensor_data_path"]
+    if not os.path.exists(folder_path):
+        _ = audio_model.audio_preprocesser(config)
+        _ = video_model.video_preprocessor(config)
+        split_data(config)
+        classify_in_folders(config)
+        
+    training_ds = dataset.TripletDataset(config)
+    validation_ds = dataset.SingularDataset(config)
+    
+    training_dataloader = DataLoader(training_ds, batch_size = config["batch_size"], shuffle = True)
+    validation_dataloader = DataLoader(validation_ds, batch_size = 1, shuffle = True)
+    
+    return training_dataloader, validation_dataloader
             
 def get_model(config):
     model = attention_model.Architecture(config["N"], config["a_m"], config["v_m"], config["s"], config["H"], config["out_classes"])
@@ -92,19 +113,11 @@ def get_model(config):
 
 def train_model(config):
     
-    split_data(config)
-    #now data is split into two folders training and validation
+    training_dl, validation_dl = get_ds(config)
     
-    
-    
-    #load the data using data loader
-    #triplet loss
-    #training loop
-    #save the model weights and stuff
     #run the validation after each epoch
     #torch.device on cuda/cpu/gpu
     #implement a writer!
-    
     
     model = get_model(config)
     optimizer = torch.optim.Adam(model.parameters(), lr = config['lr'], eps = config['eps'])
@@ -123,11 +136,53 @@ def train_model(config):
         state = torch.load(modelFilename)
         initial_epoch = state['epoch'] + 1
         global_step = state['global_step']
-        optimizer.load_state_dict(state['optmizer_state_dictionary'])
+        optimizer.load_state_dict(state['optimizer_state_dictionary'])
         model.load_state_dict(state['model_state_dictionary'])
     else:
         print('No model to preload, starting from scratch')
 
-    loss_fn = nn.CrossEntropyLoss()
+    loss_fn = nn.TripletMarginLoss(margin=config["margin"], p = 2)
+    for epoch in range(initial_epoch, config["num_epochs"]):
+        model.train()
+        batch_iterator = tqdm(training_dl, desc = f"Processing Epoch: {epoch:02d}")
+        for batch in batch_iterator:
+            
+            anchor_a = batch["anchor_a"]
+            anchor_v = batch["anchor_v"]
+            positive_a = batch["positive_a"]
+            positive_v = batch["positive_v"]
+            negative_a = batch["negative_a"]
+            negative_v = batch["negative_v"]    
+            
+            anchor_output = model(anchor_v, anchor_a)
+            positive_output = model(positive_v, positive_a)
+            negative_output = model(negative_v, negative_a)
+            print("Forward Completed")
+            loss = loss_fn(anchor_output, positive_output, negative_output)    
+            batch_iterator.set_postfix({"loss": f"{loss.item():6.3f}"})
+            print(f"Loss Calculated{loss.item():6.3f}")
+            # Log the loss
+            
+            
+            loss.backward()
+            print("Backward Completed")
+            optimizer.step()
+            optimizer.zero_grad(set_to_none=True)
+            print("Optimizer Step Completed")
+            global_step += 1
     
-    
+        #run the validation
+        
+        #save your model
+        model_filename = configuration.get_weights(config, f"{epoch:02d}")
+        torch.save({
+            'epoch': epoch,
+            'model_state_dictionary': model.state_dict(),
+            'optimizer_state_dictionary': optimizer.state_dict(),
+            'global_step': global_step
+        }, model_filename)
+        
+
+if __name__ == '__main__':
+    config = configuration.get_config()
+    train_model(config)        
