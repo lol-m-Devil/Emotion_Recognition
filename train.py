@@ -35,7 +35,57 @@ def split_data(config):
         shutil.move(os.path.join(data_dir, f'tensor_a_{i}.pt'), os.path.join(data_dir, validation_data_folder))
         shutil.move(os.path.join(data_dir, f'number_{i}.txt'), os.path.join(data_dir, validation_data_folder))
         
+def classify_in_folders(config):
+    training_path = os.path.join(config["tensor_data_path"], config["training_data_folder"])
+    validation_path = os.path.join(config["tensor_data_path"], config["validation_data_folder"])
+    
+    os.makedirs(os.path.join(training_path, "1" ), exist_ok=True)
+    os.makedirs(os.path.join(training_path, "2" ), exist_ok=True)
+    os.makedirs(os.path.join(training_path, "3" ), exist_ok=True)
+    os.makedirs(os.path.join(training_path, "4" ), exist_ok=True)
+    os.makedirs(os.path.join(training_path, "5" ), exist_ok=True)
+    os.makedirs(os.path.join(training_path, "6" ), exist_ok=True)
+    os.makedirs(os.path.join(training_path, "7" ), exist_ok=True)
+    os.makedirs(os.path.join(training_path, "8" ), exist_ok=True)
+    
+    os.makedirs(os.path.join(validation_path, "1" ), exist_ok=True)
+    os.makedirs(os.path.join(validation_path, "2" ), exist_ok=True)
+    os.makedirs(os.path.join(validation_path, "3" ), exist_ok=True)
+    os.makedirs(os.path.join(validation_path, "4" ), exist_ok=True)
+    os.makedirs(os.path.join(validation_path, "5" ), exist_ok=True)
+    os.makedirs(os.path.join(validation_path, "6" ), exist_ok=True)
+    os.makedirs(os.path.join(validation_path, "7" ), exist_ok=True)
+    os.makedirs(os.path.join(validation_path, "8" ), exist_ok=True)
+    
+    for filename in os.listdir(training_path):
+        if filename.endswith(".txt") and filename.startswith("number_"):
+            file_path = os.path.join(training_path, filename)
+            i = int(filename.split("_")[1].split(".")[0])
+            with open(file_path, 'r') as file:
+                label = file.read()
+            shutil.move(os.path.join(training_path, f'tensor_v_{i}.pt'), os.path.join(training_path, label))
+            shutil.move(os.path.join(training_path, f'tensor_a_{i}.pt'), os.path.join(training_path, label))
+        
+    for filename in os.listdir(validation_path):
+        if filename.endswith(".txt") and filename.startswith("number_"):
+            file_path = os.path.join(validation_path, filename)
+            i = int(filename.split("_")[1].split(".")[0])
+            with open(file_path, 'r') as file:
+                label = file.read()
+            shutil.move(os.path.join(validation_path, f'tensor_v_{i}.pt'), os.path.join(validation_path, label))
+            shutil.move(os.path.join(validation_path, f'tensor_a_{i}.pt'), os.path.join(validation_path, label))
+    
+    
+    for filename in os.listdir(training_path):
+        if filename.endswith(".txt"):
+            file_path = os.path.join(training_path, filename)
+            os.remove(file_path)        
 
+    for filename in os.listdir(validation_path):
+        if filename.endswith(".txt"):
+            file_path = os.path.join(validation_path, filename)
+            os.remove(file_path)
+            
 def get_model(config):
     model = attention_model.Architecture(config["N"], config["a_m"], config["v_m"], config["s"], config["H"], config["out_classes"])
     return model
@@ -43,6 +93,9 @@ def get_model(config):
 def train_model(config):
     
     split_data(config)
+    #now data is split into two folders training and validation
+    
+    
     
     #load the data using data loader
     #triplet loss
