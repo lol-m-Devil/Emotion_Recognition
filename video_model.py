@@ -238,7 +238,8 @@ class video_preprocessor():
         return output
     
     def process(self):
-        checkpoint = torch.load(self.model_path, map_location=torch.device('cpu'))
+        device = "cuda" if torch.cuda.is_available() else "mps" if torch.has_mps or torch.backends.mps.is_available() else "cpu"
+        checkpoint = torch.load(self.model_path, map_location=torch.device(device))
         ResNet101 = ResNet(Bottleneck, [3, 4, 23, 3], get_inplanes())
         if 'module.' in list(checkpoint['state_dict'].keys())[0]:
             # Remove the 'module.' prefix from keys

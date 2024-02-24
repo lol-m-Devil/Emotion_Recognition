@@ -15,6 +15,7 @@ def get_config():
         "train_test_split": 0.9,
         "model_folder": "weights",
         "model_basename": "EmoDet_",
+        "experiment_name": "experiment_1",
         "preload": "latest",
         "input_data_path": "Single_Actor_01", 
         "tensor_data_path": "tensorData",

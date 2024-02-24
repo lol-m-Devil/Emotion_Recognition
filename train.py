@@ -9,7 +9,16 @@ from torch.utils.data import DataLoader
 import dataset
 import audio_model
 import video_model
+import torchmetrics
 from tqdm import tqdm
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+from torch.utils.tensorboard import SummaryWriter
+import tensorflow as tf
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+
+
 
 def split_data(config):
     data_dir = config["tensor_data_path"]
@@ -91,6 +100,30 @@ def classify_in_folders(config):
             file_path = os.path.join(validation_path, filename)
             os.remove(file_path)
 
+
+def validation(model, validation_ds, device, global_step, writer, config):
+    model.eval()
+
+    expected = []
+    predicted = []
+    with torch.no_grad():
+        for batch in validation_ds:
+            aData = batch["anchor_a"].to(device)
+            vData = batch["anchor_v"].to(device)
+            label = batch["label"]
+            output = model(vData, aData)
+            predicted_label = torch.argmax(output, dim = -1) + 1
+            expected.append(label)
+            predicted.append(predicted_label)
+            
+    if writer:
+        metric = torchmetrics.classification.Accuracy(task = "multiclass", num_classes = config["out_classes"])
+        acc = metric(predicted, expected)
+        writer.addscalar('validation accuracy', acc, global_step)
+        writer.flush()
+
+
+
 def get_ds(config):
     folder_path = config["tensor_data_path"]
     if not os.path.exists(folder_path):
@@ -113,14 +146,25 @@ def get_model(config):
 
 def train_model(config):
     
-    training_dl, validation_dl = get_ds(config)
+     # Define the device
+    device = "cuda" if torch.cuda.is_available() else "mps" if torch.has_mps or torch.backends.mps.is_available() else "cpu"
+    print("Using device:", device)
+    if (device == 'cuda'):
+        print(f"Device name: {torch.cuda.get_device_name(device.index)}")
+        print(f"Device memory: {torch.cuda.get_device_properties(device.index).total_memory / 1024 ** 3} GB")
+    elif (device == 'mps'):
+        print(f"Device name: <mps>")
+    else:
+        print("Device name: CPU")    
+    device = torch.device(device)   
     
-    #run the validation after each epoch
-    #torch.device on cuda/cpu/gpu
-    #implement a writer!
     
-    model = get_model(config)
+    training_dl, validation_dl = get_ds(config)   
+    
+    model = get_model(config).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr = config['lr'], eps = config['eps'])
+
+    writer = SummaryWriter(config['experiment_name'])
 
     initial_epoch = 0
     global_step = 0
@@ -141,18 +185,18 @@ def train_model(config):
     else:
         print('No model to preload, starting from scratch')
 
-    loss_fn = nn.TripletMarginLoss(margin=config["margin"], p = 2)
+    loss_fn = nn.TripletMarginLoss(margin=config["margin"], p = 2).to(device)
     for epoch in range(initial_epoch, config["num_epochs"]):
         model.train()
         batch_iterator = tqdm(training_dl, desc = f"Processing Epoch: {epoch:02d}")
         for batch in batch_iterator:
             
-            anchor_a = batch["anchor_a"]
-            anchor_v = batch["anchor_v"]
-            positive_a = batch["positive_a"]
-            positive_v = batch["positive_v"]
-            negative_a = batch["negative_a"]
-            negative_v = batch["negative_v"]    
+            anchor_a = batch["anchor_a"].to(device)
+            anchor_v = batch["anchor_v"].to(device)
+            positive_a = batch["positive_a"].to(device)
+            positive_v = batch["positive_v"].to(device)
+            negative_a = batch["negative_a"].to(device)
+            negative_v = batch["negative_v"].to(device)    
             
             anchor_output = model(anchor_v, anchor_a)
             positive_output = model(positive_v, positive_a)
@@ -161,17 +205,20 @@ def train_model(config):
             loss = loss_fn(anchor_output, positive_output, negative_output)    
             batch_iterator.set_postfix({"loss": f"{loss.item():6.3f}"})
             print(f"Loss Calculated{loss.item():6.3f}")
-            # Log the loss
             
+            # Log the loss
+            writer.add_scalar('train loss', loss.item(), global_step)
+            writer.flush()
             
             loss.backward()
-            print("Backward Completed")
+            print("Backprop Completed")
             optimizer.step()
             optimizer.zero_grad(set_to_none=True)
-            print("Optimizer Step Completed")
+            print("Updation Step Completed")
             global_step += 1
     
-        #run the validation
+        #run the validation and log the details using tensorboard!
+        validation(model, validation_dl, device, global_step, writer, config)
         
         #save your model
         model_filename = configuration.get_weights(config, f"{epoch:02d}")

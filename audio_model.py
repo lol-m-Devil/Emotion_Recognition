@@ -231,7 +231,8 @@ class audio_preprocesser:
         self.extract_audio_from_folder()
         
         model_path = config["resnet-18_path"]
-        checkpoint = torch.load(model_path, map_location=torch.device('cpu'))
+        device = "cuda" if torch.cuda.is_available() else "mps" if torch.has_mps or torch.backends.mps.is_available() else "cpu"
+        checkpoint = torch.load(model_path, map_location=torch.device(device))
         self.Resnet18 = _resnet(BasicBlock, [2, 2, 2, 2])
         self.Resnet18.load_state_dict(checkpoint)
         self.pooling_layer = SpatialAveragePooling()
