@@ -17,7 +17,7 @@ def get_config():
         "model_basename": "EmoDet_",
         "experiment_name": "experiment_1",
         "preload": "latest",
-        "input_data_path": "Single_Actor_01", 
+        "input_data_path": "Actors", 
         "tensor_data_path": "tensorData",
         "training_data_folder": "training",
         "validation_data_folder": "validation",
