@@ -117,9 +117,9 @@ def validation(model, validation_ds, device, global_step, writer, config):
             predicted.append(predicted_label)
             
     if writer:
-        metric = torchmetrics.classification.Accuracy(task = "multiclass", num_classes = config["out_classes"])
+        metric = torchmetrics.classification.Accuracy(task = "multiclass", num_classes = config["out_classes"]).to(device)
         acc = metric(predicted, expected)
-        writer.addscalar('validation accuracy', acc, global_step)
+        writer.add_scalar('validation accuracy', acc, global_step)
         writer.flush()
 
 
