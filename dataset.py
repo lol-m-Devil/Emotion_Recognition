@@ -22,6 +22,7 @@ class TripletDataset(Dataset):
     def __len__(self):
         return len(self.dict)
 
+
     def __getitem__(self, idx):
         #anchor point : dict[idx]
         anchor = self.dict[idx]

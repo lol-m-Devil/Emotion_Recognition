@@ -31,14 +31,14 @@ def get_config():
     
 def get_weights(config, epoch: str):
     model_folder = config['model_folder']
-    os.makedirs(model_folder, exists_ok = True)
+    os.makedirs(model_folder, exist_ok = True)
     model_filename = f"{config['model_basename']}{epoch}.pt"
     return str(Path('.') / model_folder / model_filename)
 
 
 def latest_weights(config):
     model_folder = config["model_folder"]
-    os.makedirs(model_folder, exists_ok = True)
+    os.makedirs(model_folder, exist_ok = True)
     model_filename = f"{config['model_basename']}*"
     weights_files = list(Path(model_folder).glob(model_filename))
     if len(weights_files) == 0:
