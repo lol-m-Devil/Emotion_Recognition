@@ -203,20 +203,20 @@ def train_model(config):
             anchor_output = model(anchor_v, anchor_a)
             positive_output = model(positive_v, positive_a)
             negative_output = model(negative_v, negative_a)
-            print("Forward Completed")
+            #print("Forward Completed")
             loss = loss_fn(anchor_output, positive_output, negative_output)    
             batch_iterator.set_postfix({"loss": f"{loss.item():6.3f}"})
-            print(f"Loss Calculated{loss.item():6.3f}")
+            #print(f"Loss Calculated{loss.item():6.3f}")
             
             # Log the loss
             writer.add_scalar('train loss', loss.item(), global_step)
             writer.flush()
             
             loss.backward()
-            print("Backprop Completed")
+            #print("Backprop Completed")
             optimizer.step()
             optimizer.zero_grad(set_to_none=True)
-            print("Updation Step Completed")
+            #print("Updation Step Completed")
             global_step += 1
         
         #save your model
