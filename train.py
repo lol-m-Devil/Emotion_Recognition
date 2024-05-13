@@ -118,7 +118,9 @@ def validation(model, validation_ds, device, global_step, writer, config):
             
     if writer:
         metric = torchmetrics.classification.Accuracy(task = "multiclass", num_classes = config["out_classes"]).to(device)
-        acc = metric(predicted, expected)
+        predicted_tensor = torch.tensor(predicted)
+        expected_tensor = torch.tensor(expected)
+        acc = metric(predicted_tensor, expected_tensor)
         writer.add_scalar('validation accuracy', acc, global_step)
         writer.flush()
 
@@ -216,9 +218,6 @@ def train_model(config):
             optimizer.zero_grad(set_to_none=True)
             print("Updation Step Completed")
             global_step += 1
-    
-        #run the validation and log the details using tensorboard!
-        validation(model, validation_dl, device, global_step, writer, config)
         
         #save your model
         model_filename = configuration.get_weights(config, f"{epoch:02d}")
@@ -228,6 +227,12 @@ def train_model(config):
             'optimizer_state_dictionary': optimizer.state_dict(),
             'global_step': global_step
         }, model_filename)
+
+        #run the validation and log the details using tensorboard!
+        validation(model, validation_dl, device, epoch, writer, config)
+    
+    writer.close()
+        
         
 
 if __name__ == '__main__':
